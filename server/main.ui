@@ -38,7 +38,7 @@
        <normaloff>../../../../.designer/backup/picture/arrow-continue.png</normaloff>../../../../.designer/backup/picture/arrow-continue.png</iconset>
      </attribute>
      <attribute name="title">
-      <string/>
+      <string>🔍</string>
      </attribute>
      <widget class="QGroupBox" name="groupBox_scan_ip">
       <property name="geometry">
@@ -69,9 +69,9 @@
        <property name="geometry">
         <rect>
          <x>10</x>
-         <y>50</y>
-         <width>331</width>
-         <height>181</height>
+         <y>70</y>
+         <width>91</width>
+         <height>161</height>
         </rect>
        </property>
       </widget>
@@ -104,6 +104,65 @@
         <string>Ваш IP-адрес: -</string>
        </property>
       </widget>
+      <widget class="QLabel" name="label">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>50</y>
+         <width>47</width>
+         <height>13</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>IP-адрес</string>
+       </property>
+      </widget>
+      <widget class="QTextBrowser" name="textBrowser_mac_list">
+       <property name="geometry">
+        <rect>
+         <x>110</x>
+         <y>70</y>
+         <width>101</width>
+         <height>161</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QTextBrowser" name="textBrowser_name_comp_list">
+       <property name="geometry">
+        <rect>
+         <x>220</x>
+         <y>70</y>
+         <width>121</width>
+         <height>161</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_2">
+       <property name="geometry">
+        <rect>
+         <x>110</x>
+         <y>50</y>
+         <width>71</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>MAC-адрес</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="label_3">
+       <property name="geometry">
+        <rect>
+         <x>220</x>
+         <y>50</y>
+         <width>101</width>
+         <height>16</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Производитель</string>
+       </property>
+      </widget>
      </widget>
      <widget class="QGroupBox" name="groupBox_client">
       <property name="geometry">
@@ -115,7 +174,7 @@
        </rect>
       </property>
       <property name="title">
-       <string>Поиск клиентов</string>
+       <string>Сканирование портов</string>
       </property>
       <widget class="QTextBrowser" name="textBrowser_list_port">
        <property name="geometry">
@@ -148,6 +207,9 @@
          <width>91</width>
          <height>20</height>
         </rect>
+       </property>
+       <property name="toolTip">
+        <string>IP-адрес для сканирования портов</string>
        </property>
        <property name="inputMethodHints">
         <set>Qt::ImhNone</set>
@@ -286,6 +348,9 @@
          <height>20</height>
         </rect>
        </property>
+       <property name="toolTip">
+        <string>Адрес словаря по которому будет проводиться брутфорс</string>
+       </property>
        <property name="maxLength">
         <number>1000</number>
        </property>
@@ -293,22 +358,6 @@
         <string>C:\</string>
        </property>
       </widget>
-     </widget>
-     <widget class="QPushButton" name="pushButton_find_client">
-      <property name="geometry">
-       <rect>
-        <x>300</x>
-        <y>350</y>
-        <width>75</width>
-        <height>23</height>
-       </rect>
-      </property>
-      <property name="cursor">
-       <cursorShape>ArrowCursor</cursorShape>
-      </property>
-      <property name="text">
-       <string>Поиск</string>
-      </property>
      </widget>
      <widget class="QTextBrowser" name="textBrowser_errors">
       <property name="geometry">
@@ -349,14 +398,27 @@
      <widget class="QProgressBar" name="progressBar">
       <property name="geometry">
        <rect>
-        <x>380</x>
-        <y>350</y>
+        <x>530</x>
+        <y>340</y>
         <width>161</width>
         <height>23</height>
        </rect>
       </property>
       <property name="value">
        <number>24</number>
+      </property>
+     </widget>
+     <widget class="QCheckBox" name="checkBox_find_client">
+      <property name="geometry">
+       <rect>
+        <x>300</x>
+        <y>350</y>
+        <width>121</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Поиск клиента</string>
       </property>
      </widget>
     </widget>
@@ -366,105 +428,43 @@
        <normaloff>../../../../.designer/backup/picture/blue-folder-open-document.png</normaloff>../../../../.designer/backup/picture/blue-folder-open-document.png</iconset>
      </attribute>
      <attribute name="title">
-      <string/>
+      <string>📝</string>
      </attribute>
-     <widget class="QLineEdit" name="lineEdit_ip_get_file">
+     <widget class="QGroupBox" name="groupBox">
       <property name="geometry">
        <rect>
         <x>10</x>
         <y>10</y>
-        <width>91</width>
-        <height>20</height>
+        <width>361</width>
+        <height>221</height>
        </rect>
       </property>
-      <property name="toolTip">
-       <string>🖥IP-адрес клиента, от которого будет получен файл</string>
+      <property name="title">
+       <string>Прием файлов фоном</string>
       </property>
-      <property name="inputMethodHints">
-       <set>Qt::ImhNone</set>
-      </property>
-      <property name="inputMask">
-       <string/>
-      </property>
-      <property name="text">
-       <string/>
-      </property>
-      <property name="maxLength">
-       <number>15</number>
-      </property>
-      <property name="frame">
-       <bool>true</bool>
-      </property>
-      <property name="echoMode">
-       <enum>QLineEdit::Normal</enum>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-      </property>
-      <property name="dragEnabled">
-       <bool>false</bool>
-      </property>
-      <property name="readOnly">
-       <bool>false</bool>
-      </property>
-      <property name="placeholderText">
-       <string>255.255.255.255</string>
-      </property>
-      <property name="clearButtonEnabled">
-       <bool>false</bool>
-      </property>
-     </widget>
-     <widget class="QLabel" name="label_errors_2">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>40</y>
-        <width>91</width>
-        <height>16</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Окно состояния</string>
-      </property>
-     </widget>
-     <widget class="QTextBrowser" name="textBrowser_errors_get">
-      <property name="geometry">
-       <rect>
-        <x>10</x>
-        <y>60</y>
-        <width>271</width>
-        <height>51</height>
-       </rect>
-      </property>
-     </widget>
-     <widget class="QCheckBox" name="checkBox_auto_search">
-      <property name="geometry">
-       <rect>
-        <x>200</x>
-        <y>10</y>
-        <width>161</width>
-        <height>17</height>
-       </rect>
-      </property>
-      <property name="text">
-       <string>Приём файлов</string>
-      </property>
-     </widget>
-     <widget class="QComboBox" name="comboBox_time">
-      <property name="geometry">
-       <rect>
-        <x>110</x>
-        <y>10</y>
-        <width>81</width>
-        <height>22</height>
-       </rect>
-      </property>
-      <property name="editable">
-       <bool>false</bool>
-      </property>
-      <property name="currentText">
-       <string/>
-      </property>
+      <widget class="QTextBrowser" name="textBrowser_errors_get">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>90</y>
+         <width>271</width>
+         <height>51</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="pushButton_get_file">
+       <property name="geometry">
+        <rect>
+         <x>20</x>
+         <y>40</y>
+         <width>101</width>
+         <height>23</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>Приём файлов</string>
+       </property>
+      </widget>
      </widget>
     </widget>
    </widget>

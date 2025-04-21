@@ -1,14 +1,19 @@
 from PyQt5 import QtWidgets, uic, QtCore
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import Qt
-import sys, os, socket, subprocess, re
-from Crypto.Cipher import AES
+
+import sys
+import os
 
 try:
     Form, _ = uic.loadUiType("main_client.ui")
 except Exception as e:
     print(f"❌Ошибка загрузки UI: {e}")
     sys.exit(1)
+
+destination = os.path.join("C:\\Users", os.getlogin(), "AppData", "Roaming", "Microsoft", "Windows", "Start Menu", "Programs", "Startup") 
+source_parameters = 'parameters.txt'
+
 
 class Ui(QtWidgets.QMainWindow, Form):
     def __init__(self):
@@ -27,30 +32,123 @@ class Ui(QtWidgets.QMainWindow, Form):
             "30 секунд": 30000,
             "60 секунд": 60000
         }
-        self.current_interval = 5000  # Интервал по умолчанию: 1 секунда
-        # Создаем таймер
-        self.timer = QtCore.QTimer(self)
-        self.timer.timeout.connect(self.on_button_click_client)  # Соединяем сигнал таймера с методом
+        self.current_interval = 5000        # Интервал по умолчанию: 1 секунда
+        self.timer = QtCore.QTimer(self)    # Создаем таймер
+        self.timer.timeout.connect(self.on_button_click_client)
 
         self.pushButton_create_info.clicked.connect(self.on_button_create_info)
-        
-        with open('scripts/telegram/chat_id.txt', "r", encoding="utf-8") as file:
+
+        with open('tele_bot/chat_id.txt', "r", encoding="utf-8") as file:
             text = file.read().strip()
             self.lineEdit_tele_id.setText(text)
-        
+
         self.pushButton_save_tele_id.clicked.connect(self.save_chat_id)
         self.pushButton_send_tele.clicked.connect(self.send_tele)
         self.pushButton_set_file.clicked.connect(self.set_file)
 
+        self.pushButton_save_auto.clicked.connect(self.on_button_create_info_auto)
+        self.checkBox_autostart_auto.stateChanged.connect(self.toggle_text_checkbox)
+        self.load_checkbox_state()
+
+    def load_checkbox_state(self):
+        """Читает файл и устанавливает состояние чекбокса"""
+        path_parameters = os.path.join(destination, source_parameters)
+        if os.path.exists(path_parameters):
+            with open(path_parameters, "r", encoding="utf-8") as file:
+                content = file.read().strip().lower()
+                if "autostart on" in content:
+                    self.checkBox_autostart_auto.setChecked(True)
+                    self.checkBox_autostart_auto.setText("Включенный автозапуск")
+                else:
+                    self.checkBox_autostart_auto.setChecked(False)
+                    self.checkBox_autostart_auto.setText("Выключенный автозапуск")
+        else:
+            self.checkBox_autostart_auto.setChecked(False)
+            self.checkBox_autostart_auto.setText("Выключенный автозапуск")
+
+    def toggle_text_checkbox(self, state):
+        """Меняет текст чекбокса при активации/деактивации"""
+        if state == 2:  # Qt.Checked
+            self.checkBox_autostart_auto.setText("Включенный автозапуск")
+        else:
+            self.checkBox_autostart_auto.setText("Выключенный автозапуск")
+
+    def on_button_create_info_auto(self):
+        import shutil
+
+        QApplication.setOverrideCursor(Qt.WaitCursor)
+        report = []
+
+        if self.checkBox_port_auto.isChecked():
+            report.append("ports on\n")
+
+        if self.checkBox_sys_info_auto.isChecked():
+            report.append("sys_info on\n")
+
+        if self.checkBox_active_con_auto.isChecked():
+            report.append("active_con on\n")
+
+        if self.checkBox_net_con_auto.isChecked():
+            report.append("net_con on\n")
+
+        if self.checkBox_brandmayer_auto.isChecked():
+            report.append("brandmayer on\n")
+
+        if self.checkBox_antivirus_auto.isChecked():
+            report.append("antivirus on\n")
+
+        if self.checkBox_process_auto.isChecked():
+            report.append("process on\n")
+
+        if self.checkBox_telegram_auto.isChecked():
+            report.append(f"telegram on {self.lineEdit_tele_id.text().strip()}\n")
+
+        source_monitor = "system_monitor.exe"
+        source_scan_vuln = "scan_vuln_auto"
+        if self.checkBox_autostart_auto.isChecked():
+            report.append("autostart on")
+            try:
+                shutil.move("bg\\" + source_monitor, destination)
+                shutil.move("bg\\" + source_scan_vuln, destination)
+                print(f"Файл {source_monitor} перемещен!")
+            except Exception as e:
+                print("Ошибка: ", e)
+        else:
+            try:
+                shutil.move(os.path.join(destination, source_monitor), os.getcwd() + "\\bg")
+                shutil.move(os.path.join(destination, source_scan_vuln), os.getcwd() + "\\bg")
+                print(f"Файл {source_monitor} перемещен!")
+            except Exception as e:
+                print("Ошибка: ", e)
+
+        for item in report:
+            print(item)
+
+        string = "".join(report)
+
+        with open('parameters.txt', "w", encoding="utf-8") as file:
+            file.write(string)
+        print(f"📝Файл обновлён!")
+
+        # Если файл уже существует, удаляем его
+        exist_parameters = os.path.join(destination, source_parameters)
+        if os.path.exists(exist_parameters):
+            os.remove(exist_parameters)
+        shutil.move(source_parameters, destination) # Перемещаем файл
+
+        QApplication.setOverrideCursor(Qt.ArrowCursor)
+
     def set_file(self):
         from PyQt5.QtWidgets import QFileDialog
+
         file, _ = QFileDialog.getOpenFileName(self, "Open file", "", "Text documents (*.txt) files (*.*)")
         print(file)
         self.lineEdit_send_file.setText(file)
 
     def send_tele(self):
         if os.path.isfile(self.lineEdit_send_file.text()):
-            from scripts import telebot_send
+            from tele_bot import telebot_send
+
             telebot_send.send_file_to_telegram(self.lineEdit_send_file.text())
             self.textBrowser_errors_send.setStyleSheet("color: green;")
             self.textBrowser_errors_send.setText(f"✅ Файл {self.lineEdit_send_file.text()} успешно отправлен!")
@@ -62,39 +160,40 @@ class Ui(QtWidgets.QMainWindow, Form):
         """Сохраняет текст из QLineEdit в файл"""
         text = self.lineEdit_tele_id.text().strip()
         try:
-            with open('scripts\\telegram\\chat_id.txt', "w", encoding="utf-8") as file:
+            with open('tele_bot\\chat_id.txt', "w", encoding="utf-8") as file:
                 file.write(text)
             print(f"✅ Чат ID {text} успешно сохранен!")
             self.textBrowser_errors_send.setStyleSheet("color: green;")
             self.textBrowser_errors_send.setText(f"✅ Чат ID {text} успешно сохранен!")
         except Exception as e:
-            print(f"Ошибка сохранения файла: {e}") 
+            print(f"Ошибка сохранения файла: {e}")
             self.textBrowser_errors_send.setStyleSheet("color: red;")
             self.textBrowser_errors_send.setText(f"❌Ошибка сохранения файла: {e}")
 
     def on_button_create_info(self):
+        import subprocess
+        from datetime import datetime
+
         QApplication.setOverrideCursor(Qt.WaitCursor)
         report = []
+
         if self.checkBox_port.isChecked():
-            # Открытые порты
             from scan_vuln import scan_top_ports
-            report.append("=== Open Ports ===")
+
+            report.append("=== Open Ports ===\n")
             self.textBrowser_errors_info.append("✅Open Ports")
             scan_ports = scan_top_ports.scan_common_ports()
             report.append(scan_ports)
 
-        if self.checkBox_sys_info.isChecked(): 
-            # Системная информация
-            from scan_vuln import get_system_info
+        if self.checkBox_sys_info.isChecked():
             report.append("\n=== System Information ===\n")
             self.textBrowser_errors_info.append("✅System Information")
-            system_info = get_system_info.get_system_info()
-            for key, value in system_info.items():
-                report.append(f"{key}: {value}")
+            sys_info = subprocess.check_output("systeminfo", shell=True, text=True, encoding="cp866")
+            report.append(sys_info)
 
         if self.checkBox_active_con.isChecked():
-            # Активные соединения
             from scan_vuln import get_active_connections
+
             report.append("\n=== Active Connections ===")
             self.textBrowser_errors_info.append("✅Active Connections")
             active_connections = get_active_connections.get_active_connections()
@@ -102,8 +201,8 @@ class Ui(QtWidgets.QMainWindow, Form):
                 report.append(f"Local: {conn['Local Address']} -> Remote: {conn['Remote Address']} (Status: {conn['Status']})")
 
         if self.checkBox_net_con.isChecked():
-            # Сетевые интерфейсы
             from scan_vuln import get_network_info
+
             report.append("\n\n=== Network Information ===\n")
             self.textBrowser_errors_info.append("✅Network Information")
             network_info = get_network_info.get_network_info()
@@ -116,7 +215,8 @@ class Ui(QtWidgets.QMainWindow, Form):
                     report.append(f"{key}: {value}")
 
         if self.checkBox_brandmayer.isChecked():
-            """Проверка состояния брандмауэра"""
+            import re
+
             report.append("\n=== Brandmayer Information ===\n")
             self.textBrowser_errors_info.append("✅Brandmayer Information")
             try:
@@ -129,28 +229,22 @@ class Ui(QtWidgets.QMainWindow, Form):
 
         if self.checkBox_antivirus.isChecked():
             from scan_vuln.check_antivirus import check
+
             report.append("\n\n=== Antivirus Information ===\n")
             self.textBrowser_errors_info.append("✅Antivirus Information")
             report.append(check)
 
-        if self.checkBox_vuln.isChecked():
-            from scan_vuln.check_windows_vulnerabilities import check
-            report.append("\n\n=== Vulnerable Information ===\n")
-            self.textBrowser_errors_info.append("✅Vulnerable Information")
-            for x in check:
-                report.append(x)
-
         if self.checkBox_process.isChecked():
             from scan_vuln import process
+
             report.append("\n\n=== Process Information ===\n")
             self.textBrowser_errors_info.append("✅Process Information")
             report.append(process.get_process_report())
 
-        for item in report:    
+        for item in report:
             print(item)
 
         string = "".join(report)
-        from datetime import datetime
         filename = datetime.now().strftime("%Y-%m-%d_%H-%M-%S") + ".txt"
         with open(filename, "w", encoding="utf-8") as file:
             file.write(string)
@@ -162,7 +256,13 @@ class Ui(QtWidgets.QMainWindow, Form):
         QApplication.setOverrideCursor(Qt.ArrowCursor)
 
     def on_button_send_file(self):
+        import socket
+        import time
+        from Crypto.Cipher import AES
 
+        UDP_PORT = 37021
+        TCP_PORT = 5002
+        FILE_PATH = self.lineEdit_send_file.text()
         KEY = b'Sixteen byte key'  # 16-байтный ключ AES
         IV = b'This is an IV456'  # 16-байтный IV (инициализационный вектор)
 
@@ -170,7 +270,7 @@ class Ui(QtWidgets.QMainWindow, Form):
             try:
                 """ Функция шифрования файла """
                 cipher = AES.new(KEY, AES.MODE_CFB, IV)
-                
+
                 with open(input_file, 'rb') as f:
                     file_data = f.read()
 
@@ -179,53 +279,50 @@ class Ui(QtWidgets.QMainWindow, Form):
             except Exception as e:
                 print(f"Ошибка: {e}")
 
-        def send_file(client_socket, filename):
-            """ Отправка зашифрованного файла """
+        def send_file(server_ip):
+            tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            tcp_sock.connect((server_ip, TCP_PORT))
+            print(f"[TCP] Подключение к серверу {server_ip}:{TCP_PORT}")
             try:
-                encrypted_data = encrypt_file(filename)
-                client_socket.sendall(encrypted_data)
-                print(f"🔐 Файл {filename} зашифрован и отправлен!")
+                encrypted_data = encrypt_file(FILE_PATH)
+                tcp_sock.sendall(encrypted_data)
+                print(f"🔐 Файл {FILE_PATH} зашифрован и отправлен!")
+                self.textBrowser_errors_send.setStyleSheet("color: green;")
+                self.textBrowser_errors_send.setText(f"✅ [UDP] Сервер найден по IP: {server_ip}🔐 Файл {FILE_PATH} зашифрован и отправлен!")
+
             except Exception as e:
                 print(f"Ошибка при отправке файла: {e}")
             finally:
-                client_socket.close()
+                tcp_sock.close()
+
+        def discover_server_ip():
+            udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            udp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            udp_sock.settimeout(5)
+
+            print("[UDP] Отправка широковещательного запроса...")
+            udp_sock.sendto(b"DISCOVER_SERVER", ('<broadcast>', UDP_PORT))
+
+            try:
+                data, addr = udp_sock.recvfrom(1024)
+                server_ip = data.decode()
+                print(f"[UDP] Сервер найден по IP: {server_ip}")
+                return server_ip
+            except socket.timeout:
+                print("[UDP] Сервер не найден.")
+                self.textBrowser_errors_send.setStyleSheet("color: red;")
+                self.textBrowser_errors_send.setText(f"❌ [UDP] Сервер не найден.")
+                return None
 
         QApplication.setOverrideCursor(Qt.WaitCursor)
-        try:
-            if os.path.isfile(self.lineEdit_send_file.text()):                 
-                try:
-                    host = '0.0.0.0'  # Ожидает подключения на всех интерфейсах
-                    port = 12346  
-
-                    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                    server_socket.bind((host, port))
-                    server_socket.listen(1)
-                    server_socket.settimeout(5)
-                    print(f"📡 Сервер запущен на {host}:{port}, ожидаем подключение...")
-
-
-                    client_socket, client_address = server_socket.accept()
-                    print(f"✅ Подключено к {client_address}")
-
-                    send_file(client_socket, self.lineEdit_send_file.text())
-
-                    server_socket.close()
-
-                    self.textBrowser_errors_send.setStyleSheet("color: green;")
-                    self.textBrowser_errors_send.setText(f"✅ Подключено к {client_address}\n📤Файл отправлен!")
-
-                except Exception as e:
-                    print(f"Ошибка: {e}")
-                    self.textBrowser_errors_send.setStyleSheet("color: red;")
-                    self.textBrowser_errors_send.setText(f"Ошибка: {e}")
-
-            else:
-                self.textBrowser_errors_send.setStyleSheet("color: red;")
-                self.textBrowser_errors_send.setText("❌ Такого файла не существует, введите правильный путь!")                
-        except Exception as e:
+        if os.path.isfile(FILE_PATH):
+            server_ip = discover_server_ip()
+            if server_ip:
+                time.sleep(1)  # Даем серверу время подготовиться
+                send_file(server_ip)
+        else:
             self.textBrowser_errors_send.setStyleSheet("color: red;")
-            self.textBrowser_errors_send.setText(f"❌ Ошибка: {e}")
-            print(f"Ошибка: {e}")
+            self.textBrowser_errors_send.setText("❌ Такого файла не существует, введите правильный путь!")    
         QApplication.setOverrideCursor(Qt.ArrowCursor)
 
     def toggle_timer(self, state):
@@ -243,63 +340,44 @@ class Ui(QtWidgets.QMainWindow, Form):
                 self.timer.start(self.current_interval)
 
     def on_button_click_client(self):
-        from scripts import replace_last_octet_with_255
-        from scripts import get_ip_address_of_wifi
-        self.counter += 1
-        self.label_count_q.setText(f"📡Количество отправенных запросов: {str(self.counter)}")
-        ip_client = get_ip_address_of_wifi.get_ip_address_of_wifi()
+        import socket
 
-        self.label_localhost.setText(f"💻Ваш IP-адрес: {ip_client}")
-        print(f"💻Ваш IP-адрес: {ip_client}")
-        try:
+        UDP_PORT = 37020
+        TIMEOUT = 5
 
-            broadcast_address = replace_last_octet_with_255.replace_last_octet_with_255(ip_client)
-            print(broadcast_address)
-            port = 12345
-            message = b"Who is the server?"
-            ip_server = ''
-
-            # Настройка сокета для широковещательной передачи
+        def discover_server():
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            sock.sendto(message, (broadcast_address, port))
+            sock.settimeout(TIMEOUT)
 
-            # Ожидание ответа
-            sock.settimeout(1)
+            message = b"DISCOVER_SERVER"
+            sock.sendto(message, ('<broadcast>', UDP_PORT))
+            print("[UDP] Широковещательный запрос отправлен. Ожидаем ответ...")
+
             try:
-                response, server_address = sock.recvfrom(1024)
-                print(f"Server IP: {server_address[0]}, Response: {response.decode()}")
-                ip_server = server_address[0]
+                data, server_addr = sock.recvfrom(1024)
+                if data.decode() == "SERVER_HERE":
+                    print(f"[UDP] Сервер найден по IP: {server_addr[0]}")
+                    server_ip = server_addr[0]
+                    return server_ip
             except socket.timeout:
-                print("No response from server.")
+                print("[UDP] Время ожидания истекло. Сервер не найден.")
+                return None
 
-            self.textBrowser_errors.setStyleSheet("color: green;")
-            self.textBrowser_errors.setText(f"🖥Server IP: {server_address[0]}, ✅Response: {response.decode()}")
+        self.counter += 1
+        self.label_count_q.setText(f"📡Количество отправенных запросов: {str(self.counter)}")
 
-            # Настройка клиента
-            client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            client_socket.connect((ip_server, 12345))  # Замените 'IP_сервера' на реальный IP адрес сервера
-
-            # Отправка сообщений
-            while True:
-                # message = input("Введите сообщение: ")
-                client_socket.send(ip_client.encode('utf-8'))
-
-                # if message.lower() == 'exit':
-                #     break
-
-                response = client_socket.recv(1024).decode('utf-8')
-                print(f"Ответ от сервера: {response}")
-                break
-            client_socket.close()
-
-            self.timer.stop()
+        server_ip = discover_server()
+        if server_ip:
+            print(f"[✓] IP сервера: {server_ip}")
             self.checkBox_auto_search.setChecked(False)
-
-        except Exception as e:
+            self.textBrowser_errors.setStyleSheet("color: green;")
+            self.textBrowser_errors.setText(f"🖥Server IP: {server_ip}, ✅Response: SERVER_HERE")
+        else:
+            print("[✗] Сервер не ответил.")
             self.textBrowser_errors.setStyleSheet("color: red;")
-            self.textBrowser_errors.setText(f"❌ Ошибка: {e}")
-            print(f"❌ Ошибка: {e}")
+            self.textBrowser_errors.setText("❌ Сервер не ответил.")
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)

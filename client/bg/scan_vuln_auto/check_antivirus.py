@@ -1,5 +1,6 @@
 import subprocess
 
+
 def check_antivirus():
     try:
         # Выполняем команду PowerShell для получения списка антивирусов
@@ -11,7 +12,7 @@ def check_antivirus():
 
         # Выводим список антивирусов, если найдены
         antivirus_list = [line.strip() for line in output if line.strip()]
-        
+
         if antivirus_list:
             for av in antivirus_list:
                 return f"[OK] {av}"
@@ -20,5 +21,6 @@ def check_antivirus():
 
     except Exception as e:
         print(f"Ошибка при проверке антивируса: {e}")
+
 
 check = check_antivirus()

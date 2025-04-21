@@ -6,6 +6,7 @@ now = datetime.now()
 KEY = b'Sixteen byte key'  # 16-байтный ключ (должен совпадать с сервером)
 IV = b'This is an IV456'  # 16-байтный IV (должен совпадать с сервером)
 
+
 def decrypt_file(encrypted_data):
     try:
         """ Расшифровка полученных данных """
@@ -14,6 +15,7 @@ def decrypt_file(encrypted_data):
         return decrypted_data
     except Exception as e:
         print(f"Ошибка: {e}")
+
 
 def receive_file(server_socket, save_path):
     """ Получение и расшифровка файла """
@@ -30,11 +32,12 @@ def receive_file(server_socket, save_path):
     finally:
         server_socket.close()
 
+
 def start_client(host):
     try:
         # host = '192.168.2.101'  # IP сервера
         print(host)
-        port = 12346  
+        port = 12346
 
         client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         client_socket.connect((host, port))

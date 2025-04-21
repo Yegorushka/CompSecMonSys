@@ -1,5 +1,6 @@
 import psutil
 
+
 def get_active_connections():
     connections = []
     for conn in psutil.net_connections(kind='inet'):

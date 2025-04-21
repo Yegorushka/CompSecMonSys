@@ -1,8 +1,0 @@
-ports on
-sys_info on
-active_con on
-net_con on
-brandmayer on
-antivirus on
-vuln on
-process on
