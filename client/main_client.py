@@ -186,7 +186,7 @@ class Ui(QtWidgets.QMainWindow, Form):
             report.append(scan_ports)
 
         if self.checkBox_sys_info.isChecked():
-            report.append("\n=== System Information ===\n")
+            report.append("\n=== System Information ===")
             self.textBrowser_errors_info.append("✅System Information")
             sys_info = subprocess.check_output("systeminfo", shell=True, text=True, encoding="cp866")
             report.append(sys_info)
@@ -194,7 +194,7 @@ class Ui(QtWidgets.QMainWindow, Form):
         if self.checkBox_active_con.isChecked():
             from scan_vuln import get_active_connections
 
-            report.append("\n=== Active Connections ===")
+            report.append("\n=== Active Connections ===\n")
             self.textBrowser_errors_info.append("✅Active Connections")
             active_connections = get_active_connections.get_active_connections()
             for conn in active_connections:
@@ -258,34 +258,26 @@ class Ui(QtWidgets.QMainWindow, Form):
     def on_button_send_file(self):
         import socket
         import time
-        from Crypto.Cipher import AES
+        import ssl
 
         UDP_PORT = 37021
         TCP_PORT = 5002
         FILE_PATH = self.lineEdit_send_file.text()
-        KEY = b'Sixteen byte key'  # 16-байтный ключ AES
-        IV = b'This is an IV456'  # 16-байтный IV (инициализационный вектор)
-
-        def encrypt_file(input_file):
-            try:
-                """ Функция шифрования файла """
-                cipher = AES.new(KEY, AES.MODE_CFB, IV)
-
-                with open(input_file, 'rb') as f:
-                    file_data = f.read()
-
-                encrypted_data = cipher.encrypt(file_data)
-                return encrypted_data
-            except Exception as e:
-                print(f"Ошибка: {e}")
+        # SERVER_CERT = 'ssl\\server.crt'
 
         def send_file(server_ip):
+            # Создаем обычный сокет
             tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            tcp_sock.connect((server_ip, TCP_PORT))
+
+            # Оборачиваем сокет в SSL
+            ssl_sock = ssl.wrap_socket(tcp_sock, keyfile=None, certfile=None, server_side=False, cert_reqs=ssl.CERT_NONE, ssl_version=ssl.PROTOCOL_SSLv23)
+
+            ssl_sock.connect((server_ip, TCP_PORT))
             print(f"[TCP] Подключение к серверу {server_ip}:{TCP_PORT}")
             try:
-                encrypted_data = encrypt_file(FILE_PATH)
-                tcp_sock.sendall(encrypted_data)
+                with open(FILE_PATH, 'rb') as f:
+                    file_data = f.read()
+                ssl_sock.sendall(file_data)
                 print(f"🔐 Файл {FILE_PATH} зашифрован и отправлен!")
                 self.textBrowser_errors_send.setStyleSheet("color: green;")
                 self.textBrowser_errors_send.setText(f"✅ [UDP] Сервер найден по IP: {server_ip}🔐 Файл {FILE_PATH} зашифрован и отправлен!")
@@ -294,6 +286,7 @@ class Ui(QtWidgets.QMainWindow, Form):
                 print(f"Ошибка при отправке файла: {e}")
             finally:
                 tcp_sock.close()
+                ssl_sock.close()
 
         def discover_server_ip():
             udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)

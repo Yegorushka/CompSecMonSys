@@ -20,10 +20,9 @@ if "ports on" in content:
     # print("Open Ports")
 
 if "sys_info on" in content:
-    report.append("\n=== System Information ===\n")
+    report.append("\n=== System Information ===")
     sys_info = subprocess.check_output("systeminfo", shell=True, text=True, encoding="cp866")
     report.append(sys_info)
-    #print("System Information")
 
 if "active_con on" in content:
     # Активные соединения

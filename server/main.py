@@ -3,11 +3,11 @@ import socket
 import threading
 
 from PyQt5 import QtWidgets, uic
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtCore import Qt, QRegExp, QTimer
-from PyQt5.QtGui import QRegExpValidator
+from PyQt5.QtGui import QRegExpValidator, QPixmap
 
-from scripts.server_get_file import MyApp
+from server_get_file import MyApp
 
 # Загрузка UI-файла
 try:
@@ -16,11 +16,15 @@ except Exception as e:
     print(f"❌Ошибка загрузки UI: {e}")
     sys.exit(1)
 
-ip_client = None
-flag_find_client = False
+ip_client = None            # Глобальная переменная клиента, которая находится в функции listen_for_broadcast()
+flag_find_client = False    # Флажок для поиска клиента, включается когда клиент ищется, и отключается когда найден
+client_index = 1            # Индексации и расположение клиентов на карте сети
+
+# Список с цветами для отображения красивого вывода списка найденных устройств
+colors = ["red", "blue", "green", "purple", "orange", "pink", "black"]
 
 
-def listen_for_broadcast():
+def listen_for_broadcast(): # Поднятие сервера для поиска клиента. Возвращает переменные flag_find_client и ip_client
     global ip_client
     global flag_find_client
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -40,7 +44,17 @@ def listen_for_broadcast():
     print(flag_find_client)
 
 
-colors = ["red", "blue", "green", "purple", "orange", "pink", "black"]
+def is_connected(host="8.8.8.8", port=53, timeout=3):   # Наличие интернета
+    """
+    Проверяет наличие интернета, пытаясь подключиться к DNS серверу Google.
+    """
+    try:
+        socket.setdefaulttimeout(timeout)
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host, port))
+        return True
+    except socket.error as ex:
+        print(f"Нет подключения к интернету: {ex}")
+        return False
 
 
 class Ui(QtWidgets.QMainWindow, Form):
@@ -69,16 +83,36 @@ class Ui(QtWidgets.QMainWindow, Form):
         self.lineEdit_brute_ip.setValidator(validator)
         self.lineEdit_ip_port_scan.setValidator(validator)
 
+        for i in range(1, 13):
+            label_pic = getattr(self, f"label_cli_{i}")
+            label_pic.setText("")
+            label_pic.clear()  # очищаем изображение, если было
+
+            label_ip = getattr(self, f"label_online_client_{i}")
+            label_ip.setText("")
+
     def check_client_ip(self):
         global flag_find_client
-        print(flag_find_client)
+
         if flag_find_client:
             self.checkBox_find_client.setChecked(False)
             self.label_client_ip.setText(f"💻IP клиента: {ip_client}")
             self.lineEdit_ip_port_scan.setText(ip_client)
             self.lineEdit_brute_ip.setText(ip_client)
+
+            global client_index
+            label_pic = getattr(self, f"label_cli_{client_index}")
+            label_pic.setPixmap(QPixmap("img\\comp.png")) # Путь к изображению
+            label_pic.setAlignment(Qt.AlignCenter)  # Центрируем изображение
+            label_pic.setScaledContents(True)  # Масштабируем под размер QLabel
+
+            label_ip = getattr(self, f"label_online_client_{client_index}")
+            label_ip.setText(ip_client + "\nClient")
+            label_ip.setStyleSheet("color: red;")
+            client_index += 1
             flag_find_client = False
             self.timer_check_ip.stop()
+
 
     def on_checkbox_find_client(self, state):
         if self.checkBox_find_client.isChecked():
@@ -92,57 +126,137 @@ class Ui(QtWidgets.QMainWindow, Form):
             print("[i] Сервер не активен.")
             self.timer_check_ip.stop()
 
+
     def on_checkbox_get_file(self):
         self.server_ui = MyApp()
         self.server_ui.show()
 
+
     def on_button_click_scanner_ip(self):
-        QApplication.setOverrideCursor(Qt.WaitCursor)
-        try:
-            from scripts.get_ip_address_of_wifi import address
-            from scripts.router_ip import ip_router
-            import requests
-            import scapy.all as sc
+        from scripts.get_ip_address_of_wifi import get_active_wifi_ip   # Ваш IP-адрес
 
-            self.label_your_ip.setText(f"💻Ваш IP-адрес: {address}")
-            self.label_router_ip.setText("🖥Default Gateway: " + ip_router)
+        address = get_active_wifi_ip() # Ваш IP-адрес
+        global label_pic
+        global label_ip
+        global client_index
 
-            subnet = str(address + "/24")
+        client_index = 1 # С каждым нажатием кнопки возвращаем индекс в изначальное положение
 
-            arp_request = sc.ARP(pdst=subnet)
-            broadcast = sc.Ether(dst="ff:ff:ff:ff:ff:ff")
-            arp_request_broadcast = broadcast / arp_request
-            answered_list = sc.srp(arp_request_broadcast, timeout=1, verbose=False)[0]
+        # Очищение окон выводов данных, так как это списки
+        self.textBrowser_ip_list.clear()
+        self.textBrowser_mac_list.clear()
+        self.textBrowser_name_comp_list.clear()
+        for i in range(1, 13):
+            label_pic = getattr(self, f"label_cli_{i}")
+            label_pic.clear()  # Очищаем картинку
+            label_pic.setText("")  # На всякий случай чистим текст тоже
+            label_pic.setStyleSheet("")  # Сбрасываем стили (если хочешь)
 
-            devices = []
+            label_ip = getattr(self, f"label_online_client_{i}")
+            label_ip.clear()  # Очищаем текст IP
+            label_ip.setStyleSheet("")  # Сбрасываем стиль цвета
 
-            for sent, received in answered_list:
-                response = requests.get(f"https://api.macvendors.com/{received.hwsrc}")
-                if response.status_code == 200:
-                    manufac = response.text
+        if address:
+            # Процесс обработки (типа прогрузка)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            self.setWindowTitle("Сканирование...")
+            self.progressBar.setValue(0)  # Сброс прогресса
+            self.progressBar.setMaximum(100)
+            self.start_progress()
+
+            try:
+                from scripts.router_ip import ip_router  # Default Gateway
+                import requests
+                import scapy.all as sc
+
+                self.label_your_ip.setText(f"💻Ваш IP-адрес: {address}")
+                self.label_server.setPixmap(QPixmap("img\\server.png"))  # Путь к изображению
+                self.label_server.setAlignment(Qt.AlignCenter)  # Центрируем изображение
+                self.label_server.setScaledContents(True)  # Масштабируем под размер QLabel
+                self.label_online_server.setText(address)
+                self.label_online_server.setStyleSheet("color: purple;")
+
+                self.label_router_ip.setText("🖥Default Gateway: " + ip_router)
+                self.label_router.setPixmap(QPixmap("img\\router.png"))  # Путь к изображению
+                self.label_router.setAlignment(Qt.AlignCenter)  # Центрируем изображение
+                self.label_router.setScaledContents(True)  # Масштабируем под размер QLabel
+                self.label_online_router.setText(ip_router)
+                self.label_online_router.setStyleSheet("color: orange;")
+
+                if is_connected():
+                    print("Интернет доступен!")
+                    self.label_inter.setPixmap(QPixmap("img\\cloud.png")) # Путь к изображению
+                    self.label_inter.setAlignment(Qt.AlignCenter)  # Центрируем изображение
+                    self.label_inter.setScaledContents(True)  # Масштабируем под размер QLabel
+                    self.label_internet.setText("Internet Connection is on")
+                    self.label_internet.setStyleSheet("color: blue;")
                 else:
-                    manufac = "Неизвестный производитель"
-                devices.append({"IP": received.psrc, "MAC": received.hwsrc, "Производитель": manufac})
+                    print("Интернет недоступен.")
+                    self.label_internet.setText("Internet Connection is off")
+                    self.label_internet.setStyleSheet("color: red;")
 
-            index = 0  # Индекс цвета
-            for device in devices:
-                color = colors[index % len(colors)]  # Меняем цвет циклически
-                self.textBrowser_ip_list.append(f'<span style="color:{color};">{device["IP"]}</span>')
-                self.textBrowser_mac_list.append(f'<span style="color:{color};">{device["MAC"]}</span>')
-                self.textBrowser_name_comp_list.append(f'<span style="color:{color};">{device["Производитель"]}</span>')
+                subnet = str(address + "/24")
 
-                index += 1  # Переход к следующему цвету
+                arp_request = sc.ARP(pdst=subnet)
+                broadcast = sc.Ether(dst="ff:ff:ff:ff:ff:ff")
+                arp_request_broadcast = broadcast / arp_request
+                answered_list = sc.srp(arp_request_broadcast, timeout=1, verbose=False)[0]
 
-            self.textBrowser_errors.setStyleSheet("color: green;")
-            self.textBrowser_errors.setText("✅Сканирование завершено")
-            print("✅Сканирование завершено")
+                devices = []
 
-        except Exception as e:
-            self.textBrowser_errors.setStyleSheet("color: red;")
-            self.textBrowser_errors.setText(f"❌ Ошибка: {e}")
-            print(f"❌ Ошибка: {e}")
+                for sent, received in answered_list:
+                    response = requests.get(f"https://api.macvendors.com/{received.hwsrc}")
+                    if response.status_code == 200:
+                        manufac = response.text
+                    else:
+                        manufac = "Неизвестный производитель"
+                    devices.append({"IP": received.psrc, "MAC": received.hwsrc, "Производитель": manufac})
 
-        QApplication.setOverrideCursor(Qt.ArrowCursor)
+                index = 0  # Индекс цвета
+
+                for device in devices:
+                    if device["IP"] != ip_router and device["IP"] != address:
+                        color = colors[index % len(colors)]  # Меняем цвет циклически
+                        self.textBrowser_ip_list.append(f'<span style="color:{color};">{device["IP"]}</span>')
+                        self.textBrowser_mac_list.append(f'<span style="color:{color};">{device["MAC"]}</span>')
+                        self.textBrowser_name_comp_list.append(f'<span style="color:{color};">{device["Производитель"]}</span>')
+
+                        label_pic = getattr(self, f"label_cli_{client_index}")
+                        label_pic.setPixmap(QPixmap("img\\comp.png")) # Путь к изображению
+                        label_pic.setAlignment(Qt.AlignCenter)  # Центрируем изображение
+                        label_pic.setScaledContents(True)  # Масштабируем под размер QLabel
+
+                        label_ip = getattr(self, f"label_online_client_{client_index}")
+                        label_ip.setText(device["IP"])
+                        label_ip.setStyleSheet("color: green;")
+
+                        index += 1  # Переход к следующему цвету
+                        client_index += 1  # <- увеличиваем счётчик
+
+                devices.clear()
+
+                self.textBrowser_errors.setStyleSheet("color: green;")
+                self.textBrowser_errors.setText("✅Сканирование завершено")
+                print("✅Сканирование завершено")
+
+            except Exception as e:
+                self.textBrowser_errors.setStyleSheet("color: red;")
+                self.textBrowser_errors.setText(f"❌ Ошибка: {e}")
+                print(f"❌ Ошибка: {e}")
+
+            #Прогрузка завершена
+            self.progressBar.setValue(100)
+            QApplication.setOverrideCursor(Qt.ArrowCursor)
+            self.setWindowTitle("CompSecMonSys - Administator")
+
+        else:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setWindowTitle("Подключение к Wi-Fi")
+            msg.setText("Пожалуйста, подключитесь к Wi-Fi сети для продолжения работы и перезагрузите программу.")
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+
 
     def on_button_click_list_port(self):
         import scripts.scaner_of_ip_port

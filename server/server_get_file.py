@@ -1,10 +1,11 @@
 import socket
 import threading
 import sys
+import ssl
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QCheckBox, QLabel
 from PyQt5.QtCore import pyqtSignal, QObject
+from PyQt5.QtGui import QIcon
 from datetime import datetime
-from Crypto.Cipher import AES
 
 now = datetime.now()
 SAVE_PATH = now.strftime("%Y-%m-%d_%H-%M-%S")+'.txt'
@@ -12,18 +13,10 @@ SAVE_PATH = now.strftime("%Y-%m-%d_%H-%M-%S")+'.txt'
 UDP_PORT = 37021
 TCP_PORT = 5002
 BUFFER_SIZE = 4096
-KEY = b'Sixteen byte key'  # 16-байтный ключ (должен совпадать с сервером)
-IV = b'This is an IV456'  # 16-байтный IV (должен совпадать с сервером)
 
-
-def decrypt_file(encrypted_data):
-    try:
-        """ Расшифровка полученных данных """
-        cipher = AES.new(KEY, AES.MODE_CFB, IV)
-        decrypted_data = cipher.decrypt(encrypted_data)
-        return decrypted_data
-    except Exception as e:
-        print(f"Ошибка: {e}")
+# Сертификаты для SSL
+CERT_FILE = 'ssl\\server.crt'
+KEY_FILE = 'ssl\\server.key'
 
 
 # Класс-сигнал для общения между потоками и GUI
@@ -36,13 +29,16 @@ class MyApp(QWidget):
         super().__init__()
         self.setWindowTitle("Сервер приема файла")
         self.resize(300, 90)
+        self.setWindowIcon(QIcon("img\\download.png"))
 
         # Интерфейс
         self.checkbox = QCheckBox("Принимать файл")
+        self.attention_label = QLabel("❗️Оптимально Вы можете запустить сервер один раз.\nПри повторном запуске возможна ошибка.\nПерезапустите программу❗️")
         self.status_label = QLabel("Ожидание...")
 
         layout = QVBoxLayout()
         layout.addWidget(self.checkbox)
+        layout.addWidget(self.attention_label)
         layout.addWidget(self.status_label)
         self.setLayout(layout)
 
@@ -84,27 +80,30 @@ class MyApp(QWidget):
         tcp_sock.listen(1)
         print(f"[TCP] Ожидание файла на порту {TCP_PORT}...")
 
+        # Оборачиваем сокет в SSL
+        ssl_sock = ssl.wrap_socket(tcp_sock, keyfile=KEY_FILE, certfile=CERT_FILE, server_side=True)
+
         try:
-            conn, addr = tcp_sock.accept()
-            print(f"[TCP] Подключено: {addr}")
+            conn, addr = ssl_sock.accept()
+            print(f"[TCP][SSL] Подключено: {addr}")
             with open(SAVE_PATH, "wb") as f:
                 while True:
-                    encrypted_data = conn.recv(BUFFER_SIZE)
-                    data = decrypt_file(encrypted_data)
+                    data = conn.recv(BUFFER_SIZE)
                     if not data:
                         break
                     f.write(data)
-            print(f"[✓] Файл получен и сохранен как {SAVE_PATH}")
-            self.signals.file_received.emit()
-            conn.close()
         except Exception as e:
             print(f"[TCP] Ошибка: {e}")
         finally:
+            print(f"[✓] Файл получен и сохранен как {SAVE_PATH}")
+            self.signals.file_received.emit()
+            ssl_sock.close()
             tcp_sock.close()
+            conn.close()
 
     def on_file_received(self):
         self.checkbox.setChecked(False)
-        self.status_label.setText(f"✅ Файл {SAVE_PATH} получен и разшифрован.")
+        self.status_label.setText(f"✅ Файл {SAVE_PATH} получен.")
 
 
 if __name__ == "__main__":
